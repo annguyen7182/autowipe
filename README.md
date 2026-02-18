@@ -1,12 +1,12 @@
-# AutoWipe v4.5
+# AutoWipe v4.5.1
 
-![Version](https://img.shields.io/badge/version-4.5-blue.svg) ![Platform](https://img.shields.io/badge/platform-Windows_PowerShell_5.1-blue.svg)
+![Version](https://img.shields.io/badge/version-4.5.1-blue.svg) ![Platform](https://img.shields.io/badge/platform-Windows_PowerShell_5.1-blue.svg)
 
 AutoWipe is a Windows PowerShell automation system for high-volume hard drive testing and erasure with Hard Disk Sentinel (HDS). It manages up to 24 rig ports with a live dashboard, verdict automation, and batch-driven actions.
 
 ## Status
 
-- Current stable release: **v4.5**
+- Current stable release: **v4.5.1**
 - Runtime stack: **Windows 10/11 + PowerShell 5.1 + Hard Disk Sentinel Pro**
 - Repository layout in this branch is the canonical source of truth
 

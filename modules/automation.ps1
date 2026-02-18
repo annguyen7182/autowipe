@@ -1,5 +1,5 @@
 # ==========================================================
-# AUTOWIPE v4.5 (STABLE) - AUTOMATION MODULE
+# AUTOWIPE v4.5.1 (STABLE) - AUTOMATION MODULE
 # ==========================================================
 # Purpose: The "Brain" of the system:
 #   - Master Timer (1000ms tick)

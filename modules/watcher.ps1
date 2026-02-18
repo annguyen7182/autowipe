@@ -1,5 +1,5 @@
 # ==========================================================
-# AUTOWIPE v4.5 (STABLE) - WATCHER MODULE
+# AUTOWIPE v4.5.1 (STABLE) - WATCHER MODULE
 # ==========================================================
 # Purpose: Surface test observer providing:
 #   - Baseline building (Port -> Disk -> Serial mapping)
@@ -703,6 +703,7 @@ function Evaluate-And-Render {
     $passLenMax = [int]$script:DEFAULTS.PassLenMax
     if(Get-Command 'Get-PassLenMax' -ErrorAction SilentlyContinue) { $passLenMax = Get-PassLenMax }
     $failLenMin = [int]$script:DEFAULTS.FailLenMin
+    if(Get-Command 'Get-FailLenMin' -ErrorAction SilentlyContinue) { $failLenMin = Get-FailLenMin }
     if($failLenMin -lt ($passLenMax + 50)) { $failLenMin = $passLenMax + 50 }
     
     foreach($h in $script:HandleBind.Keys) {

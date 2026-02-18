@@ -32,6 +32,11 @@
 
 ## Recent changes (last 24h)
 
+- (working tree) Bumped patch release metadata to `v4.5.1` (README/docs/changelog and runtime banner strings) following semver patch versioning.
+- (working tree) Hardened drive-selector detection in `modules/hds_control.ps1` with process/owner-aware matching, class fallback (`TFormDriveSelect*`), and retry logic to recover when selector opens behind the Surface Test window.
+- (working tree) Fixed HDS top-window PID filtering in `modules/hds_control.ps1` so fallback main-window discovery uses the actual process ID.
+- (working tree) Added OS-disk guard in `Run-WipeByDiskIndices` to skip system disk targets and continue wiping non-OS disks.
+- (working tree) Wired live watcher LEN thresholds by adding `Get-FailLenMin` support and GUI-backed `Get-PassLenMax`/`Get-FailLenMin` accessors.
 - (working tree) Added initial `.context/` context spine files for shared agent memory.
 - (working tree) Updated multi-agent workflow docs to require `.context` startup and handoff updates.
 - (working tree) Added explicit agent precedence (Claude -> Codex -> Gemini) and required handoff signatures.

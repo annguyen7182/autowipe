@@ -5,7 +5,7 @@ title: AutoWipe Docs
 
 # AutoWipe Documentation
 
-This documentation set is aligned to **AutoWipe v4.5** in this repository.
+This documentation set is aligned to **AutoWipe v4.5.1** in this repository.
 
 ## What AutoWipe Does
 

@@ -46,3 +46,23 @@
 
 - Decision: Store the proposed major update architecture in `autowipe_v5.0.MD` as a draft specification before implementation.
 - Rationale: Enables iterative review and risk trimming for a large multi-machine control-plane change without destabilizing v4.5 runtime behavior.
+
+## 2026-02-18 - D-011: Keep popup/nuke behavior, patch discovery and wipe safety surgically
+
+- Decision: Keep existing popup targeting (`#32770` + snapshot) and current nuke behavior unchanged, while fixing `HDS_GetTopWindowsOfProcess` to pass the real PID to `EnumWindows`.
+- Rationale: Field behavior for popup/nuke is already validated by operators; the PID forwarding bug caused avoidable HDS window rediscovery failures.
+
+## 2026-02-18 - D-012: Enforce OS-disk skip policy and live LEN thresholds
+
+- Decision: In wipe selection, skip OS-disk targets and continue with remaining disks; do not abort entire wipe batch when non-OS targets remain. Use GUI `Pass LEN` / `Fail LEN` values in watcher verdict logic when valid.
+- Rationale: Preserves throughput while adding safety guardrails against accidental system-disk wipes and ensuring operator LEN controls are effective.
+
+## 2026-02-18 - D-013: Make drive-selector acquisition resilient to z-order/focus races
+
+- Decision: In wipe flow, detect selector windows via HDS process + owner chain + class fallback (`TFormDriveSelect*`), then retry `Multiple` opening up to three times before failing.
+- Rationale: Field failures showed selector can open behind Surface Test, causing false "selector not found" failures despite successful dialog creation.
+
+## 2026-02-18 - D-014: Publish as semver patch release 4.5.1
+
+- Decision: Mark this change set as `v4.5.1` (patch release) without renaming existing entry-point filenames.
+- Rationale: Changes are backward-compatible reliability/safety fixes and UI/runtime metadata updates, which fit semantic-version patch scope.

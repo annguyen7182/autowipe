@@ -1,5 +1,5 @@
 # ==========================================================
-# AUTOWIPE v4.5 (STABLE) - CORE MODULE
+# AUTOWIPE v4.5.1 (STABLE) - CORE MODULE
 # ==========================================================
 # Purpose: Foundation layer providing:
 #   - Win32 P/Invoke declarations
@@ -408,7 +408,7 @@ function Purge-SerialOnOtherPorts {
 function Initialize-Core {
     Write-Host ""
     Write-Host "===========================================================" -ForegroundColor Cyan
-    Write-Host "  AUTOWIPE v4.5 (STABLE) - CORE MODULE INITIALIZATION" -ForegroundColor Cyan
+    Write-Host "  AUTOWIPE v4.5.1 (STABLE) - CORE MODULE INITIALIZATION" -ForegroundColor Cyan
     Write-Host "===========================================================" -ForegroundColor Cyan
     Write-Host ""
     

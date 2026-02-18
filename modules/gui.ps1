@@ -1,5 +1,5 @@
 # ==========================================================
-# AUTOWIPE v4.5 (STABLE) - GUI MODULE
+# AUTOWIPE v4.5.1 (STABLE) - GUI MODULE
 # ==========================================================
 # Purpose: Presentation layer providing:
 #   - WinForms initialization
@@ -136,6 +136,26 @@ function Update-GridFromWatcherState {
 # SECTION 3: EVENT HANDLERS
 # ==========================================================
 
+function Get-PassLenMax {
+    $fallback = [int]$script:DEFAULTS.PassLenMax
+    if(-not $script:PassLenBox) { return $fallback }
+    $value = 0
+    if([int]::TryParse([string]$script:PassLenBox.Text, [ref]$value) -and $value -gt 0) {
+        return $value
+    }
+    $fallback
+}
+
+function Get-FailLenMin {
+    $fallback = [int]$script:DEFAULTS.FailLenMin
+    if(-not $script:FailLenBox) { return $fallback }
+    $value = 0
+    if([int]::TryParse([string]$script:FailLenBox.Text, [ref]$value) -and $value -gt 0) {
+        return $value
+    }
+    $fallback
+}
+
 function Sync-AutomationConfig {
     Set-AutomationConfig -RefreshMin $script:AutoRefreshBox.Text `
                          -CheckSec $script:IntervalBox.Text `
@@ -181,7 +201,7 @@ function OnAutoShutdownToggle {
 
 function Initialize-GUI {
     $script:Form = New-Object System.Windows.Forms.Form
-    $script:Form.Text = "Autowipe v4.5 (Stable) - $env:COMPUTERNAME"; $script:Form.Width = $script:formWidth
+    $script:Form.Text = "Autowipe v4.5.1 (Stable) - $env:COMPUTERNAME"; $script:Form.Width = $script:formWidth
     $script:Form.FormBorderStyle = 'FixedSingle'; $script:Form.MaximizeBox = $false
     
     # Grid Setup

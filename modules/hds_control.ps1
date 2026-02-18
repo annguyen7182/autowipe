@@ -1,5 +1,5 @@
 # ==========================================================
-# AUTOWIPE v4.5 (STABLE) - HDS CONTROL MODULE
+# AUTOWIPE v4.5.1 (STABLE) - HDS CONTROL MODULE
 # ==========================================================
 # Purpose: HDS automation layer providing:
 #   - Window finding/filtering
@@ -147,7 +147,7 @@ function HDS_GetTopWindowsOfProcess {
         if($pp -eq $l.ToInt32()) { $tops.Add($h) | Out-Null }
         $true
     }
-    [HDSNative.U32]::EnumWindows($cb, [IntPtr]::Zero) | Out-Null
+    [HDSNative.U32]::EnumWindows($cb, [IntPtr]$targetPid) | Out-Null
     $tops
 }
 
@@ -531,6 +531,20 @@ function HDS_GetOSDiskSerial {
     } catch { Log 'HDS_OS_DISK_FAIL' @{ err = $_.Exception.Message }; $null }
 }
 
+function HDS_GetOSDiskIndex {
+    try {
+        $c = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'" -ErrorAction Stop
+        $part = Get-CimAssociatedInstance -InputObject $c -ResultClassName Win32_DiskPartition | Select-Object -First 1
+        $disk = Get-CimAssociatedInstance -InputObject $part -ResultClassName Win32_DiskDrive | Select-Object -First 1
+        $idx = ($disk.Index -as [int])
+        if($idx -ge 0) {
+            Log 'HDS_OS_DISK_INDEX' @{ disk = $idx }
+            return $idx
+        }
+        $null
+    } catch { Log 'HDS_OS_DISK_INDEX_FAIL' @{ err = $_.Exception.Message }; $null }
+}
+
 function HDS_WaitSurfaceConfigWindow([int]$timeoutMs=8000){
   $deadline = (Get-Date).AddMilliseconds($timeoutMs)
   do{
@@ -548,9 +562,31 @@ function HDS_WaitSurfaceConfigWindow([int]$timeoutMs=8000){
   $null
 }
 
-function HDS_WaitDriveSelectorWindow([int]$timeoutMs=8000){
+function HDS_WaitDriveSelectorWindow {
+  param([int]$timeoutMs=8000, [IntPtr]$ownerHwnd=[IntPtr]::Zero)
   $deadline = (Get-Date).AddMilliseconds($timeoutMs)
   do{
+    $p = HDS_GetProcess
+    if($p){
+      foreach($hw in (HDS_GetTopWindowsOfProcess $p.Id)){
+        try{
+          if($hw -eq [IntPtr]::Zero -or -not [HDSNative.U32]::IsWindowVisible($hw)){ continue }
+          if($ownerHwnd -ne [IntPtr]::Zero -and -not (HDS_TestOwnedBy $hw $ownerHwnd)){ continue }
+
+          $title = HDS_GetText $hw
+          $cls = HDS_GetClass $hw
+          $isSelector = ($title -like 'Surface Test*' -and $title -notlike '*Hard Disk Sentinel*') -or ($cls -like 'TFormDriveSelect*')
+          if(-not $isSelector){ continue }
+
+          HDS_FocusWindow $hw
+          try{
+            $ae = [System.Windows.Automation.AutomationElement]::FromHandle($hw)
+            if($ae){ return $ae }
+          }catch{}
+        }catch{}
+      }
+    }
+
     $root = [System.Windows.Automation.AutomationElement]::RootElement
     $wins = $root.FindAll([System.Windows.Automation.TreeScope]::Children, [System.Windows.Automation.Condition]::TrueCondition)
     for($i = 0; $i -lt $wins.Count; $i++){
@@ -673,13 +709,64 @@ function Run-WipeByDiskIndices {
     try {
         if(-not $DiskIndices -or $DiskIndices.Count -eq 0) { Log 'HDS_WIPE_NO_INDICES' @{}; return @() }
         $osSerialNorm = HDS_GetOSDiskSerial
-        
+        $osDiskIndex = HDS_GetOSDiskIndex
+
+        $diskSerialByIndex = @{}
+        try {
+            $disks = Get-CimInstance Win32_DiskDrive -ErrorAction Stop
+            foreach($d in $disks) {
+                $idx = ($d.Index -as [int])
+                if($idx -lt 0) { continue }
+                $diskSerialByIndex[$idx] = Normalize-Serial ([string]$d.SerialNumber)
+            }
+        } catch {
+            Log 'HDS_WIPE_DISK_SERIAL_LOOKUP_FAIL' @{ err = $_.Exception.Message }
+        }
+
+        if(Get-Command 'Get-HdsXmlMap' -ErrorAction SilentlyContinue) {
+            try {
+                $xmlMap = Get-HdsXmlMap
+                foreach($xmlKey in $xmlMap.Keys) {
+                    $idx = ($xmlKey -as [int])
+                    if($idx -lt 0) { continue }
+                    if($diskSerialByIndex.ContainsKey($idx) -and $diskSerialByIndex[$idx]) { continue }
+                    $entry = $xmlMap[$xmlKey]
+                    $serialNorm = Normalize-Serial ([string]$entry.SerialNorm)
+                    if(-not $serialNorm) { $serialNorm = Normalize-Serial ([string]$entry.SerialRaw) }
+                    if($serialNorm) { $diskSerialByIndex[$idx] = $serialNorm }
+                }
+            } catch {
+                Log 'HDS_WIPE_XML_SERIAL_LOOKUP_FAIL' @{ err = $_.Exception.Message }
+            }
+        }
+
+        $safeDiskIndices = New-Object System.Collections.Generic.List[int]
+        foreach($diskIdx in $DiskIndices) {
+            $idx = [int]$diskIdx
+            $serialNorm = ''
+            if($diskSerialByIndex.ContainsKey($idx)) { $serialNorm = [string]$diskSerialByIndex[$idx] }
+            $isOsDisk = ($osDiskIndex -ne $null -and $idx -eq [int]$osDiskIndex)
+            if(-not $isOsDisk -and $osSerialNorm -and $serialNorm -and $serialNorm -eq $osSerialNorm) {
+                $isOsDisk = $true
+            }
+            if($isOsDisk) {
+                Log 'HDS_WIPE_SKIP_OS_DISK' @{ disk = $idx; serial = $serialNorm }
+                continue
+            }
+            if(-not $safeDiskIndices.Contains($idx)) { $safeDiskIndices.Add($idx) | Out-Null }
+        }
+
+        if($safeDiskIndices.Count -eq 0) {
+            Log 'HDS_WIPE_ALL_SKIPPED' @{ reason = 'os_disk_guard'; requested = $DiskIndices.Count }
+            return @()
+        }
+
         $ready = HDS_EnsureReadyAndClearModals; if(-not $ready) { return @() }
         $tw = $ready.Hwnd
         $toolbar = HDS_FindToolbarByTitle; if($toolbar -eq [IntPtr]::Zero) { Log 'HDS_TOOLBAR_NOT_FOUND' @{}; return @() }
-        
+
         HDS_FocusWindow $tw; Start-Sleep -Milliseconds 120
-        Log 'HDS_WIPE_STARTING' @{ count = $DiskIndices.Count }
+        Log 'HDS_WIPE_STARTING' @{ count = $safeDiskIndices.Count; requested = $DiskIndices.Count }
         
         $snapBefore = HDS_SnapshotTopLevel
         HDS_ClickToolbarClient -hToolbar $toolbar -x $script:HDS_SurfaceX -y $script:HDS_SurfaceY -tag 'Surface Test'
@@ -697,7 +784,20 @@ function Run-WipeByDiskIndices {
         [void](HDS_ClickCenter $btnMultiHwnd $surfHwnd 'Multiple')
         
         # HANDLE SELECTOR
-        $selectAE = HDS_WaitDriveSelectorWindow 8000; if(-not $selectAE) { Log 'HDS_WIPE_SELECTOR_NOT_FOUND' @{}; return @() }
+        $selectAE = $null
+        for($attempt = 1; $attempt -le 3; $attempt++) {
+            $selectAE = HDS_WaitDriveSelectorWindow -timeoutMs 2500 -ownerHwnd $surfHwnd
+            if($selectAE) { break }
+            Log 'HDS_WIPE_SELECTOR_RETRY' @{ attempt = $attempt }
+            HDS_FocusWindow $surfHwnd
+            Start-Sleep -Milliseconds 120
+            $btnRetry = HDS_FindChildByCaption $surfHwnd 'Multiple disk drives'
+            if($btnRetry -eq [IntPtr]::Zero) { $btnRetry = HDS_FindChildByCaption $surfHwnd 'Multiple' }
+            if($btnRetry -ne [IntPtr]::Zero) {
+                [void](HDS_ClickCenter $btnRetry $surfHwnd 'Multiple retry')
+            }
+        }
+        if(-not $selectAE) { Log 'HDS_WIPE_SELECTOR_NOT_FOUND' @{}; return @() }
         $selectHwnd = [IntPtr]$selectAE.Current.NativeWindowHandle; HDS_FocusWindow $selectHwnd
         HDS_UncheckAllCheckboxes $selectAE
         
@@ -705,7 +805,7 @@ function Run-WipeByDiskIndices {
         $walker = [System.Windows.Automation.TreeWalker]::ControlViewWalker
         $condCheckbox = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::CheckBox)
         
-        foreach($diskIdx in $DiskIndices) {
+        foreach($diskIdx in $safeDiskIndices) {
             $row = HDS_FindRowByDiskIndex -dlgAE $selectAE -DiskIndex $diskIdx; if(-not $row) { Log 'HDS_WIPE_DISK_NOT_FOUND_IN_LIST' @{ disk = $diskIdx }; continue }
             $rowCheck = $row.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $condCheckbox)
             if($rowCheck) { if(HDS_ToggleCheckbox $rowCheck 'On') { $hits.Add($diskIdx)|Out-Null; Log 'HDS_WIPE_CHECKED' @{ disk = $diskIdx } } }

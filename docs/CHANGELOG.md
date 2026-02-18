@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented here.
 
+## [4.5.1] - 2026-02-18
+
+### Fixed
+
+- Corrected HDS process window enumeration to pass the target PID, improving main-window fallback discovery and status gating reliability.
+- Hardened Surface Test selector acquisition with process/owner-aware detection and retry handling when the selector opens behind the parent window.
+
+### Changed
+
+- Added OS-disk guard in wipe selection to skip system disk targets and continue non-OS targets in the same batch.
+- Wired GUI `Pass LEN` and `Fail LEN` inputs into watcher verdict thresholds with safe numeric fallback behavior.
+
 ## [4.5.0] - 2025-12-28
 
 ### Added

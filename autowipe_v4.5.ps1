@@ -1,5 +1,5 @@
 # ==========================================================
-# AUTOWIPE v4.5 (STABLE) - MAIN ENTRY POINT
+# AUTOWIPE v4.5.1 (STABLE) - MAIN ENTRY POINT
 # ==========================================================
 # Modular architecture:
 #   CORE         → Foundation (logging, CSV, Win32)
@@ -38,7 +38,7 @@ $ErrorActionPreference = 'Stop'
 
 Write-Host ""
 Write-Host "=====================================" -ForegroundColor Cyan
-Write-Host "  AUTOWIPE v4.5 (STABLE) - LOADING MODULES" -ForegroundColor Cyan
+Write-Host "  AUTOWIPE v4.5.1 (STABLE) - LOADING MODULES" -ForegroundColor Cyan
 Write-Host "=====================================" -ForegroundColor Cyan
 Write-Host ""
 
